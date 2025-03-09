@@ -201,3 +201,57 @@ func (s *Server) HandleAnalyzeFile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "File analysis started"})
 }
+
+// ProcessFile handles the request to process an uploaded file
+func (s *Server) ProcessFile(c *gin.Context) {
+	// Get the file ID from the URL parameter
+	fileID := c.Param("id")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
+		return
+	}
+
+	// Get the user ID from the JWT token
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	// Process the file
+	result, err := s.fileService.ProcessLogFile(c.Request.Context(), fileID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to process file: %v", err)})
+		return
+	}
+
+	// Return the result
+	c.JSON(http.StatusOK, result)
+}
+
+// GetFileAnalysis handles the request to retrieve analysis results for a file
+func (s *Server) GetFileAnalysis(c *gin.Context) {
+	// Get the file ID from the URL parameter
+	fileID := c.Param("id")
+	if fileID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "File ID is required"})
+		return
+	}
+
+	// Get the user ID from the JWT token
+	userID, exists := c.Get("userId")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User ID not found in token"})
+		return
+	}
+
+	// Get the analysis results
+	result, err := s.fileService.GetLogAnalysisResult(c.Request.Context(), fileID, userID.(string))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": fmt.Sprintf("Failed to get analysis results: %v", err)})
+		return
+	}
+
+	// Return the result
+	c.JSON(http.StatusOK, result)
+}

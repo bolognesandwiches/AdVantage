@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/bolognesandwiches/AdVantage/internal/ingestion"
 	"github.com/bolognesandwiches/AdVantage/internal/storage"
 )
 
@@ -22,13 +23,15 @@ type FileUploadInfo struct {
 
 // FileService handles file operations
 type FileService struct {
-	fileStorage *storage.FileStorage
+	fileStorage  *storage.FileStorage
+	logProcessor *ingestion.LogProcessorService
 }
 
 // NewFileService creates a new file service
-func NewFileService(fileStorage *storage.FileStorage) *FileService {
+func NewFileService(fileStorage *storage.FileStorage, logProcessor *ingestion.LogProcessorService) *FileService {
 	return &FileService{
-		fileStorage: fileStorage,
+		fileStorage:  fileStorage,
+		logProcessor: logProcessor,
 	}
 }
 
@@ -125,28 +128,37 @@ func (s *FileService) validateFileSize(header *multipart.FileHeader) error {
 }
 
 // ProcessLogFile handles the processing of an uploaded DSP log file
-// This is where we would implement the parsing and analysis of the log file
-func (s *FileService) ProcessLogFile(ctx context.Context, fileID, userID string) error {
+func (s *FileService) ProcessLogFile(ctx context.Context, fileID, userID string) (*ingestion.LogAnalysisResult, error) {
+	// Check if the file has already been processed
+	processed, err := s.logProcessor.IsLogFileProcessed(ctx, fileID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check if file is processed: %w", err)
+	}
+
+	// If already processed, return the existing results
+	if processed {
+		return s.GetLogAnalysisResult(ctx, fileID, userID)
+	}
+
 	// Get the file
 	file, fileInfo, err := s.fileStorage.GetFile(fileID, userID)
 	if err != nil {
-		return fmt.Errorf("failed to get file for processing: %w", err)
+		return nil, fmt.Errorf("failed to get file for processing: %w", err)
 	}
 	defer file.Close()
 
-	// In a real implementation, we would:
-	// 1. Parse the file based on its type
-	// 2. Validate the file structure and contents
-	// 3. Process the data and store it in the database
-	// 4. Update the file status in the database
+	// Process the file
+	result, err := s.logProcessor.ProcessLogFile(ctx, fileInfo.FilePath, fileID, fileInfo.FileName, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to process log file: %w", err)
+	}
 
-	// For now, we'll just log that we're processing the file
-	fmt.Printf("Processing log file: %s (ID: %s) for user %s\n", fileInfo.FileName, fileID, userID)
+	return result, nil
+}
 
-	// Simulate processing time
-	time.Sleep(1 * time.Second)
-
-	return nil
+// GetLogAnalysisResult retrieves the analysis result for a log file
+func (s *FileService) GetLogAnalysisResult(ctx context.Context, fileID, userID string) (*ingestion.LogAnalysisResult, error) {
+	return s.logProcessor.GetAnalysisResult(ctx, fileID, userID)
 }
 
 // AnalyzeLogFile performs analysis on a processed log file

@@ -20,6 +20,7 @@ export default function UploadPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFiles, setUploadedFiles] = useState<FileUploadResponse[]>([]);
+  const [processingFiles, setProcessingFiles] = useState<Record<string, string>>({});
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     // Add to existing files
@@ -72,6 +73,16 @@ export default function UploadPage() {
       // Add to existing uploaded files
       setUploadedFiles((prev) => [...prev, ...newUploadedFiles]);
       
+      // Start processing the uploaded files
+      for (const file of newUploadedFiles) {
+        setProcessingFiles(prev => ({
+          ...prev,
+          [file.id]: 'processing'
+        }));
+        
+        processFile(file.id);
+      }
+      
       // Clear the file selection
       setFiles([]);
       
@@ -83,6 +94,38 @@ export default function UploadPage() {
       setUploading(false);
       setUploadProgress(0);
     }
+  };
+
+  // Process a file after it's been uploaded
+  const processFile = async (fileId: string) => {
+    try {
+      // Call the process endpoint
+      const result = await fileAPI.processFile(fileId);
+      
+      // Update the processing status
+      setProcessingFiles(prev => ({
+        ...prev,
+        [fileId]: result.data.status
+      }));
+      
+      if (result.data.status === 'completed') {
+        toast.success(`File processing completed successfully`);
+      } else if (result.data.status === 'error') {
+        toast.error(`File processing failed: ${result.data.errorMessage}`);
+      }
+    } catch (error) {
+      console.error('Processing error:', error);
+      setProcessingFiles(prev => ({
+        ...prev,
+        [fileId]: 'error'
+      }));
+      toast.error('Failed to process file. Please try again.');
+    }
+  };
+
+  // View analysis for a processed file
+  const viewAnalysis = (fileId: string) => {
+    window.location.href = `/dashboard/analytics?fileId=${fileId}`;
   };
 
   const formatFileSize = (bytes: number) => {
@@ -242,35 +285,64 @@ export default function UploadPage() {
                     </svg>
                     <div className="ml-3">
                       <p className="text-sm font-medium text-gray-900">{file.fileName}</p>
-                      <p className="text-sm text-gray-500">{formatFileSize(file.fileSize)} • {file.status}</p>
+                      <p className="text-sm text-gray-500">
+                        {formatFileSize(file.fileSize)} • 
+                        {processingFiles[file.id] ? (
+                          <span className={`ml-1 ${
+                            processingFiles[file.id] === 'completed' 
+                              ? 'text-green-600' 
+                              : processingFiles[file.id] === 'error' 
+                              ? 'text-red-600' 
+                              : 'text-yellow-600'
+                          }`}>
+                            {processingFiles[file.id] === 'processing' ? 'Processing...' : 
+                             processingFiles[file.id] === 'completed' ? 'Processed' : 
+                             'Processing failed'}
+                          </span>
+                        ) : (
+                          <span className="ml-1">{file.status}</span>
+                        )}
+                      </p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
                     <button
                       type="button"
-                      onClick={() => fileAPI.analyzeFile(file.id).then(() => toast.success('Analysis started'))}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-primary-700 bg-primary-100 hover:bg-primary-200"
-                    >
-                      Analyze
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        fileAPI.getFile(file.id).then((response) => {
-                          // Create a download link
-                          const url = window.URL.createObjectURL(new Blob([response.data]));
-                          const link = document.createElement('a');
-                          link.href = url;
-                          link.setAttribute('download', file.fileName);
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        });
-                      }}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded text-gray-700 bg-gray-100 hover:bg-gray-200"
+                      className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-primary-700 bg-primary-100 hover:bg-primary-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
+                      onClick={() => window.open(`/api/v1/files/${file.id}`, '_blank')}
                     >
                       Download
                     </button>
+                    
+                    {processingFiles[file.id] === 'completed' && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-green-700 bg-green-100 hover:bg-green-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                        onClick={() => viewAnalysis(file.id)}
+                      >
+                        View Analysis
+                      </button>
+                    )}
+                    
+                    {processingFiles[file.id] === 'error' && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-yellow-700 bg-yellow-100 hover:bg-yellow-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                        onClick={() => processFile(file.id)}
+                      >
+                        Retry Processing
+                      </button>
+                    )}
+                    
+                    {!processingFiles[file.id] && (
+                      <button
+                        type="button"
+                        className="inline-flex items-center px-2.5 py-1.5 border border-transparent text-xs font-medium rounded text-blue-700 bg-blue-100 hover:bg-blue-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                        onClick={() => processFile(file.id)}
+                      >
+                        Process
+                      </button>
+                    )}
                   </div>
                 </motion.li>
               ))}

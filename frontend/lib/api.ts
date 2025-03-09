@@ -76,6 +76,16 @@ export interface FileUploadResponse {
   status: string;
 }
 
+export interface LogAnalysisResult {
+  fileId: string;
+  userId: string;
+  fileName: string;
+  processedAt: string;
+  summary: any;
+  status: string;
+  errorMessage?: string;
+}
+
 export const fileAPI = {
   // Upload a file with progress tracking
   uploadFile: (file: File, onUploadProgress?: (progressEvent: any) => void) => {
@@ -91,7 +101,7 @@ export const fileAPI = {
   },
   
   // List all files for the current user
-  listFiles: () => api.get<FileUploadResponse[]>('/api/v1/files'),
+  listFiles: () => api.get<FileUploadResponse[]>('/api/v1/files/list'),
   
   // Get a file by ID
   getFile: (fileId: string) => api.get<Blob>(`/api/v1/files/${fileId}`, {
@@ -102,15 +112,28 @@ export const fileAPI = {
   deleteFile: (fileId: string) => api.delete(`/api/v1/files/${fileId}`),
   
   // Process a file
-  processFile: (fileId: string) => api.post(`/api/v1/files/${fileId}/process`),
+  processFile: (fileId: string) => api.post<LogAnalysisResult>(`/api/v1/files/process/${fileId}`),
   
-  // Analyze a file
-  analyzeFile: (fileId: string) => api.post(`/api/v1/files/${fileId}/analyze`),
+  // Get file analysis results
+  getFileAnalysis: (fileId: string) => api.get<LogAnalysisResult>(`/api/v1/files/analysis/${fileId}`),
 };
 
-// In future: Analytics API
+// Analytics API
 export const analyticsAPI = {
-  // To be implemented in Phase 2
+  // Get bid performance metrics
+  getBidPerformance: (fileId: string) => api.get(`/api/v1/analytics/bid-performance/${fileId}`),
+  
+  // Get campaign performance metrics
+  getCampaignPerformance: (fileId: string) => api.get(`/api/v1/analytics/campaign-performance/${fileId}`),
+  
+  // Get geographic distribution
+  getGeographicDistribution: (fileId: string) => api.get(`/api/v1/analytics/geographic/${fileId}`),
+  
+  // Get device breakdown
+  getDeviceBreakdown: (fileId: string) => api.get(`/api/v1/analytics/device-breakdown/${fileId}`),
+  
+  // Get hourly breakdown
+  getHourlyBreakdown: (fileId: string) => api.get(`/api/v1/analytics/hourly-breakdown/${fileId}`),
 };
 
 export default api; 

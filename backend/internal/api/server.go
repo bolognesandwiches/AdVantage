@@ -3,11 +3,13 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/bolognesandwiches/AdVantage/internal/config"
 	"github.com/bolognesandwiches/AdVantage/internal/db"
+	"github.com/bolognesandwiches/AdVantage/internal/ingestion"
 	"github.com/bolognesandwiches/AdVantage/internal/services"
 	"github.com/bolognesandwiches/AdVantage/internal/storage"
 	"github.com/gin-gonic/gin"
@@ -43,12 +45,15 @@ func NewServer(cfg *config.Config, database *db.PostgresDB) *Server {
 	// Create file storage
 	fileStorage, err := storage.NewFileStorage("uploads")
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create file storage: %v", err))
+		log.Fatalf("Failed to initialize file storage: %v", err)
 	}
+
+	// Initialize the log processor service
+	logProcessor := ingestion.NewLogProcessorService("uploads")
 
 	// Create services
 	userService := services.NewUserService(database)
-	fileService := services.NewFileService(fileStorage)
+	fileService := services.NewFileService(fileStorage, logProcessor)
 
 	// Create server
 	server := &Server{
@@ -130,11 +135,10 @@ func (s *Server) setupRoutes() {
 			files := protected.Group("/files")
 			{
 				files.POST("/upload", s.HandleFileUpload)
-				files.GET("", s.HandleListFiles)
 				files.GET("/:id", s.HandleGetFile)
-				files.DELETE("/:id", s.HandleDeleteFile)
-				files.POST("/:id/process", s.HandleProcessFile)
-				files.POST("/:id/analyze", s.HandleAnalyzeFile)
+				files.GET("/list", s.HandleListFiles)
+				files.POST("/process/:id", s.ProcessFile)
+				files.GET("/analysis/:id", s.GetFileAnalysis)
 			}
 		}
 	}
