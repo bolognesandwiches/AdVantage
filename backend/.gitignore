@@ -1,0 +1,66 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Go workspace file
+go.work
+
+# Dependency directories
+/vendor/
+
+# Temporary files
+/tmp/
+tmp/
+
+# IDE files
+.idea/
+.vscode/
+
+# Environment files
+.env
+.env.local
+.env.development
+
+# Build output
+/bin/
+/dist/
+
+# Log files
+*.log
+logs/
+
+# Uploaded files
+/uploads/*
+!/uploads/.gitkeep
+/uploads/dsp_logs/*
+!/uploads/dsp_logs/.gitkeep
+/uploads/temp/*
+!/uploads/temp/.gitkeep
+/uploads/reports/*
+!/uploads/reports/.gitkeep
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files
+*.csv
+*.tsv
+*.json
+!/fixtures/*.json
+!/mock/*.json
+!/configs/*.json
+
+# Air hot reloading temporary files
+tmp/
+__debug_bin 

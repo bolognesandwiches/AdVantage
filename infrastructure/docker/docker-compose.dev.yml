@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ../../backend
+      dockerfile: ../infrastructure/docker/Dockerfile.backend.dev
+    volumes:
+      - ../../backend:/app
+      - go-modules:/go/pkg/mod
+    environment:
+      - DB_HOST=postgres
+      - DB_USER=advantage
+      - DB_PASSWORD=advantage
+      - DB_NAME=advantage
+      - DB_PORT=5432
+      - JWT_SECRET=dev-secret-key
+      - ENV=development
+      - PORT=8080
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+    networks:
+      - advantage-network
+
+  frontend:
+    build:
+      context: ../../frontend
+      dockerfile: ../infrastructure/docker/Dockerfile.frontend.dev
+    volumes:
+      - ../../frontend:/app
+      - /app/node_modules
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - advantage-network
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_USER=advantage
+      - POSTGRES_PASSWORD=advantage
+      - POSTGRES_DB=advantage
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - advantage-network
+
+networks:
+  advantage-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  go-modules: 
